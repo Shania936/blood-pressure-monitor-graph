@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blood Pressure Monitor (Server Version)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 0; }
+    header, footer { background: #003366; color: white; text-align: center; padding: 1em; }
+    nav a { display: block; margin: 10px 0; text-decoration: none; color: #003366; font-weight: bold; }
+    .page { display: none; padding: 20px; }
+    .active { display: block; }
+    label { display: block; margin: 10px 0; }
+    input { padding: 5px; width: 250px; }
+    button { background: #003366; color: white; border: none; padding: 10px 15px; margin-top: 10px; cursor: pointer; border-radius: 5px; }
+    button:hover { background: #0055a5; }
+    p { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Blood Pressure Monitor (Server Version)</h1>
+  </header>
+
+  <!-- Login Page with Unique ID -->
+  <div id="loginPage" class="page active">
+    <h2>Login</h2>
+    <label>Unique ID: <input type="text" id="uniqueIdInput"></label>
+    <label>Password: <input type="password" id="passwordInput"></label>
+    <button onclick="login()">Login</button>
+    <button onclick="createNewID()">Create New ID</button>
+    <p id="loginError" style="color:red;"></p>
+  </div>
+
+  <!-- Basic Information Page -->
+  <div id="infoPage" class="page">
+    <h2>Basic Information</h2>
+    <label>Name: <input type="text" id="nameInput"></label>
+    <label>Date of Birth: <input type="date" id="dobInput"></label>
+    <label>Health Insurance #: <input type="text" id="insuranceInput"></label>
+    <label>Change Password: <input type="password" id="newPasswordInput"></label>
+    <button onclick="saveBasicInfo()">Save Info</button>
+    <button onclick="goToPage('menuPage')">Go to Menu</button>
+  </div>
+
+  <!-- Menu Page with 5 Choices -->
+  <div id="menuPage" class="page">
+    <h2>Menu</h2>
+    <nav>
+      <a href="#" onclick="goToPage('editInfoPage')">Update Basic Information</a>
+      <a href="#" onclick="goToPage('dataEntryPage')">Enter Blood Pressure Data</a>
+      <a href="#" onclick="goToPage('graphPage')">View Graph</a>
+      <a href="#" onclick="goToPage('recommendPage')">Recommendations</a>
+      <a href="#" onclick="syncWithServer()">Sync Records with Server</a>
+    </nav>
+  </div>
+
+  <!-- Edit Info Page -->
+  <div id="editInfoPage" class="page">
+    <h2>Edit Basic Information</h2>
+    <label>Name: <input type="text" id="editNameInput"></label>
+    <label>Date of Birth: <input type="date" id="editDobInput"></label>
+    <label>Health Insurance #: <input type="text" id="editInsuranceInput"></label>
+    <button onclick="saveEditedInfo()">Save Changes</button>
+    <button onclick="goToPage('menuPage')">Back to Menu</button>
+  </div>
+
+  <!-- Enter Blood Pressure Data Page -->
+  <div id="dataEntryPage" class="page">
+    <h2>Enter Blood Pressure</h2>
+    <label>Systolic: <input type="number" id="systolicInput"></label>
+    <label>Diastolic: <input type="number" id="diastolicInput"></label>
+    <button onclick="saveBPData()">Save Blood Pressure</button>
+    <button onclick="goToPage('menuPage')">Back to Menu</button>
+    <p id="bpMessage" style="color:green;"></p>
+  </div>
+
+  <!-- Graph Page -->
+  <div id="graphPage" class="page">
+    <h2>Graph Data</h2>
+    <canvas id="bpChart" width="400" height="200"></canvas>
+    <button onclick="goToPage('menuPage')">Back to Menu</button>
+  </div>
+
+  <!-- Recommendations Page -->
+  <div id="recommendPage" class="page">
+    <h2>Recommendations</h2>
+    <p id="recommendationText"></p>
+    <button onclick="goToPage('menuPage')">Back to Menu</button>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Blood Pressure Monitor App</p>
+  </footer>
+
+  <script>
+    // Temporary storage
+    let currentUserId = "";
+    let userPassword = "";
+    let userInfo = { name:"", dob:"", insurance:"" };
+    let bpData = [];
+
+    // Navigation
+    function goToPage(pageId) {
+      const pages = document.querySelectorAll('.page');
+      pages.forEach(p => p.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+
+      if (pageId === 'graphPage') renderGraph();
+      else if (pageId === 'recommendPage') renderRecommendations();
+      else if (pageId === 'editInfoPage') prefillEditInfo();
+    }
+
+    // Login functions
+    function login() {
+      const id = document.getElementById('uniqueIdInput').value;
+      const pass = document.getElementById('passwordInput').value;
+
+      if (!id || !pass) {
+        document.getElementById('loginError').innerText = "Please enter both ID and password.";
+        return;
+      }
+
+      // Placeholder: would verify with server
+      currentUserId = id;
+      userPassword = pass;
+      document.getElementById('loginError').innerText = "";
+      goToPage('infoPage');
+    }
+
+    function createNewID() {
+      const id = prompt("Enter a new Unique ID:");
+      const pass = prompt("Set a password:");
+      if (id && pass) {
+        currentUserId = id;
+        userPassword = pass;
+        alert(`New ID created: ${id}`);
+        goToPage('infoPage');
+      }
+    }
+
+    // Basic Info
+    function saveBasicInfo() {
+      userInfo.name = document.getElementById('nameInput').value;
+      userInfo.dob = document.getElementById('dobInput').value;
+      userInfo.insurance = document.getElementById('insuranceInput').value;
+      const newPass = document.getElementById('newPasswordInput').value;
+      if(newPass) userPassword = newPass;
+      alert("Basic information saved! (Will sync with server later)");
+    }
+
+    // Edit Info
+    function prefillEditInfo() {
+      document.getElementById('editNameInput').value = userInfo.name;
+      document.getElementById('editDobInput').value = userInfo.dob;
+      document.getElementById('editInsuranceInput').value = userInfo.insurance;
+    }
+
+    function saveEditedInfo() {
+      userInfo.name = document.getElementById('editNameInput').value;
+      userInfo.dob = document.getElementById('editDobInput').value;
+      userInfo.insurance = document.getElementById('editInsuranceInput').value;
+      alert("Changes saved! (Will sync with server later)");
+      goToPage('menuPage');
+    }
+
+    // Blood Pressure Data
+    function saveBPData() {
+      const systolic = parseInt(document.getElementById('systolicInput').value);
+      const diastolic = parseInt(document.getElementById('diastolicInput').value);
+      if(systolic && diastolic) {
+        bpData.push({ systolic, diastolic, date: new Date().toLocaleDateString() });
+        document.getElementById('bpMessage').innerText = "Blood pressure saved locally!";
+        document.getElementById('systolicInput').value = "";
+        document.getElementById('diastolicInput').value = "";
+      } else {
+        alert("Please enter both systolic and diastolic values.");
+      }
+    }
+
+    // Graph
+    function renderGraph() {
+      const ctx = document.getElementById('bpChart').getContext('2d');
+      if (window.bpChartInstance) window.bpChartInstance.destroy();
+      const dates = bpData.map(entry => entry.date);
+      const systolic = bpData.map(entry => entry.systolic);
+      const diastolic = bpData.map(entry => entry.diastolic);
+
+      window.bpChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [
+            { label: 'Systolic', data: systolic, borderColor: 'rgb(255, 99, 132)', fill: false },
+            { label: 'Diastolic', data: diastolic, borderColor: 'rgb(54, 162, 235)', fill: false },
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: { 
+            x: { title: { display: true, text: 'Date' } },
+            y: { title: { display: true, text: 'Pressure (mm Hg)' } }
+          }
+        }
+      });
+    }
+
+    // Recommendations
+    function getBPCategory(s, d) {
+      if (s < 120 && d < 80) return 'Normal';
+      if (s < 130 && d < 80) return 'Elevated';
+      if (s < 140 || d < 90) return 'Stage 1 Hypertension';
+      if (s < 180 || d < 120) return 'Stage 2 Hypertension';
+      return 'Hypertensive Crisis';
+    }
+
+    function getRecommendations(category) {
+      switch(category) {
+        case 'Normal': return 'Keep up the good work with a healthy lifestyle.';
+        case 'Elevated': return 'Consider lifestyle changes to prevent hypertension.';
+        case 'Stage 1 Hypertension': return 'Consult with a healthcare provider.';
+        case 'Stage 2 Hypertension': return 'Seek medical attention promptly.';
+        case 'Hypertensive Crisis': return 'Immediate medical attention is required. Call 911.';
+        default: return 'Consult a healthcare provider for personalized advice.';
+      }
+    }
+
+    function renderRecommendations() {
+      if (bpData.length === 0) {
+        document.getElementById('recommendationText').innerText = 'No blood pressure data available.';
+        return;
+      }
+      const latest = bpData[bpData.length - 1];
+      const category = getBPCategory(latest.systolic, latest.diastolic);
+      const recommendation = getRecommendations(category);
+      document.getElementById('recommendationText').innerText = 
+        `Latest reading: ${latest.systolic}/${latest.diastolic} mm Hg. Category: ${category}. ${recommendation}`;
+    }
+
+    // Sync (placeholder for server-side work in Node.js later)
+    function syncWithServer() {
+      alert("Records would now sync with the server (Node.js implementation next chapter).");
+      console.log("Sync payload:", { currentUserId, userInfo, bpData });
+    }
+  </script>
+</body>
+</html>
